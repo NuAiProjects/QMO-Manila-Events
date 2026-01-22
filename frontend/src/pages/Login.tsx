@@ -46,8 +46,8 @@ export default function Login() {
       {/* Branding */}
       <div className="hidden lg:flex w-1/2 bg-gradient-to-b from-indigo-900 to-purple-900 items-center justify-center text-white">
         <div className="text-center space-y-4">
-          <div className="text-5xl font-bold">NU</div>
-          <h1 className="text-2xl font-semibold">NU Phil Admin Panel</h1>
+          <div className="text-5xl font-bold">QMO</div>
+          <h1 className="text-2xl font-semibold">Manila Events Admin Panel</h1>
           <p className="opacity-80">
             Secure access for conference administrators
           </p>
@@ -60,9 +60,7 @@ export default function Login() {
           onSubmit={handleLogin}
           className="w-full max-w-md bg-white rounded-xl shadow-lg p-8 space-y-6"
         >
-          <h2 className="text-2xl font-bold text-gray-900">
-            Admin Login
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-900">Admin Login</h2>
 
           <div>
             <label className="block text-sm font-medium text-gray-700">

@@ -52,12 +52,10 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const { profile } = useAuth();
 
-
   const handleSignOut = async () => {
-  await supabase.auth.signOut();
-  navigate("/login", { replace: true });
-};
-
+    await supabase.auth.signOut();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <aside
@@ -71,11 +69,13 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
         {!collapsed && (
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
-              <span className="text-sidebar-primary-foreground font-bold text-lg">NU</span>
+              <span className="text-sidebar-primary-foreground font-bold text-lg">
+                QMO
+              </span>
             </div>
             <div>
               <h1 className="text-sidebar-foreground font-semibold text-lg leading-tight">
-                Conference
+                Manila Events
               </h1>
               <p className="text-sidebar-muted text-xs">Admin Panel</p>
             </div>
@@ -83,14 +83,26 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
         )}
         {collapsed && (
           <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center mx-auto">
-            <span className="text-sidebar-primary-foreground font-bold text-lg">NU</span>
+            <span className="text-sidebar-primary-foreground font-bold text-lg">
+              NU
+            </span>
           </div>
         )}
       </div>
 
       {/* Profile Section */}
-      <div className={cn("p-4 border-b border-sidebar-border", collapsed && "px-2")}>
-        <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
+      <div
+        className={cn(
+          "p-4 border-b border-sidebar-border",
+          collapsed && "px-2"
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center gap-3",
+            collapsed && "justify-center"
+          )}
+        >
           <Avatar className="h-11 w-11 ring-2 ring-sidebar-primary/30">
             <AvatarImage src="/placeholder.svg" alt="Admin" />
             <AvatarFallback className="bg-sidebar-accent text-sidebar-foreground">
@@ -105,7 +117,6 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
               <p className="text-sidebar-muted text-xs truncate">
                 {getRoleLabel(profile?.role)}
               </p>
-
             </div>
           )}
         </div>
@@ -140,7 +151,8 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
                   "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
-                  isActive && "bg-sidebar-accent text-sidebar-foreground font-medium",
+                  isActive &&
+                    "bg-sidebar-accent text-sidebar-foreground font-medium",
                   isActive && "border-l-4 border-sidebar-primary ml-0 pl-3",
                   collapsed && "justify-center px-3"
                 )}
@@ -160,7 +172,10 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
                 <li key={item.name}>
                   <Tooltip delayDuration={0}>
                     <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-                    <TooltipContent side="right" className="bg-foreground text-background">
+                    <TooltipContent
+                      side="right"
+                      className="bg-foreground text-background"
+                    >
                       {item.name}
                     </TooltipContent>
                   </Tooltip>
@@ -192,7 +207,6 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
               onClick={handleSignOut}
               className="w-full justify-start text-sidebar-foreground/70 hover:text-destructive hover:bg-destructive/10"
             >
-
               <LogOut className="h-5 w-5 mr-3" />
               Sign Out
             </Button>
@@ -212,7 +226,10 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
                   </span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="bg-foreground text-background">
+              <TooltipContent
+                side="right"
+                className="bg-foreground text-background"
+              >
                 Notifications
               </TooltipContent>
             </Tooltip>
@@ -224,11 +241,13 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
                   onClick={handleSignOut}
                   className="text-sidebar-foreground/70 hover:text-destructive hover:bg-destructive/10"
                 >
-
                   <LogOut className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="bg-foreground text-background">
+              <TooltipContent
+                side="right"
+                className="bg-foreground text-background"
+              >
                 Sign Out
               </TooltipContent>
             </Tooltip>
