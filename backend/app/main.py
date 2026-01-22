@@ -9,7 +9,7 @@ app = FastAPI(title=PROJECT_NAME)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://qmo-manila-events-frontend.onrender.com",
+        "https://qmo-manila-events.onrender.com",
         "http://localhost:8080",
     ],
     allow_credentials=True,
