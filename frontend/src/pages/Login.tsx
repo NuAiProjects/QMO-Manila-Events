@@ -46,8 +46,8 @@ export default function Login() {
       {/* Branding */}
       <div className="hidden lg:flex w-1/2 bg-gradient-to-b from-indigo-900 to-purple-900 items-center justify-center text-white">
         <div className="text-center space-y-4">
-          <div className="text-5xl font-bold">QMO</div>
-          <h1 className="text-2xl font-semibold">Manila Events Admin Panel</h1>
+          <div className="text-5xl font-bold">QMO-Manila</div>
+          <h1 className="text-2xl font-semibold">Events Admin Panel</h1>
           <p className="opacity-80">
             Secure access for conference administrators
           </p>
