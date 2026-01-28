@@ -1,3 +1,5 @@
+// frontend/src/components/layout/AdminLayout.tsx
+
 import { useState } from "react";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminHeader } from "./AdminHeader";
@@ -24,12 +26,7 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
       )}
 
       {/* Sidebar */}
-      <div
-        className={cn(
-          "lg:block",
-          mobileMenuOpen ? "block" : "hidden"
-        )}
-      >
+      <div className={cn("lg:block", mobileMenuOpen ? "block" : "hidden")}>
         <AdminSidebar
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -50,9 +47,7 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
           showMobileMenu={true}
         />
 
-        <main className="p-6 animate-fade-in">
-          {children}
-        </main>
+        <main className="p-6 animate-fade-in">{children}</main>
       </div>
     </div>
   );

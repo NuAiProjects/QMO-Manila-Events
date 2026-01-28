@@ -104,6 +104,7 @@ export default function Events() {
   const [createOpen, setCreateOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [editingEvent, setEditingEvent] = useState<any>(null);
 
   /* ================= FETCH ================= */
 
@@ -314,7 +315,23 @@ export default function Events() {
                         View Details
                       </DropdownMenuItem>
 
-                      <DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          try {
+                            const data = await getEventDetails(
+                              Number(event.id)
+                            );
+                            setEditingEvent(data);
+                            setCreateOpen(true);
+                          } catch (err) {
+                            console.error(
+                              "Failed to load event for editing",
+                              err
+                            );
+                            alert("Failed to load event for editing");
+                          }
+                        }}
+                      >
                         <Edit className="h-4 w-4 mr-2" />
                         Edit Event
                       </DropdownMenuItem>
@@ -334,9 +351,16 @@ export default function Events() {
 
       <CreateEventModal
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) {
+            setEditingEvent(null);
+          }
+        }}
         onCreated={fetchEvents}
+        event={editingEvent}
       />
+
       <ViewEventModal
         open={viewOpen}
         onOpenChange={setViewOpen}

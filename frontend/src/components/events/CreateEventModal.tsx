@@ -1,3 +1,4 @@
+// frontend/src/components/events/CreateEventModal.tsx
 import { useEffect, useState } from "react";
 import {
   Dialog,
@@ -24,7 +25,7 @@ import {
 import { Plus, Trash2, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 
-import { createEvent } from "@/services/events";
+import { createEvent, updateEvent } from "@/services/events";
 import { getBuildings, getFloors, getRooms } from "@/services/locations";
 import { getSpeakers } from "@/services/users";
 
@@ -34,6 +35,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
+  event?: any | null;
 }
 
 interface Building {
@@ -63,19 +65,24 @@ interface SessionForm {
   session_date?: Date;
   session_start_time: string;
   session_end_time: string;
-  session_building_id?: number;
-  session_floor_id?: number;
-  session_room_id?: number;
+  session_building_id?: string;
+  session_floor_id?: string;
+  session_room_id?: string;
   floors?: Floor[];
   rooms?: Room[];
 }
 
 /* ================= COMPONENT ================= */
 
-export function CreateEventModal({ open, onOpenChange, onCreated }: Props) {
+export function CreateEventModal({
+  open,
+  onOpenChange,
+  onCreated,
+  event: initialEvent, // ✅ alias to avoid DOM `event`
+}: Props) {
   const [loading, setLoading] = useState(false);
 
-  const [event, setEvent] = useState({
+  const [form, setForm] = useState({
     name: "",
     description: "",
     startDate: undefined as Date | undefined,
@@ -87,6 +94,11 @@ export function CreateEventModal({ open, onOpenChange, onCreated }: Props) {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [sessions, setSessions] = useState<SessionForm[]>([]);
+  const [venuesReady, setVenuesReady] = useState(false);
+  const isEditMode = Boolean(initialEvent?.id);
+  useEffect(() => {
+    console.log("🔍 SESSIONS STATE:", sessions);
+  }, [sessions]);
 
   /* ================= EFFECTS ================= */
 
@@ -94,6 +106,129 @@ export function CreateEventModal({ open, onOpenChange, onCreated }: Props) {
     getBuildings().then(setBuildings).catch(console.error);
     getSpeakers().then(setSpeakers).catch(console.error);
   }, []);
+  useEffect(() => {
+    console.log("🏢 BUILDINGS:", buildings);
+  }, [buildings]);
+
+  useEffect(() => {
+    if (!initialEvent) return;
+    setVenuesReady(false);
+
+    setForm({
+      name: initialEvent.event_name,
+      description: initialEvent.event_description || "",
+      startDate: new Date(initialEvent.start_datetime),
+      endDate: new Date(initialEvent.end_datetime),
+      startTime: new Date(initialEvent.start_datetime)
+        .toISOString()
+        .slice(11, 16),
+      endTime: new Date(initialEvent.end_datetime).toISOString().slice(11, 16),
+    });
+
+    const hydrateSessions = async () => {
+      const hydrated: SessionForm[] = [];
+
+      for (const s of initialEvent.sessions || []) {
+        const speakerId = s.session_speaker_id ?? s.speaker?.id ?? null;
+
+        const sessionDate = s.session_date
+          ? new Date(s.session_date)
+          : s.date
+          ? new Date(s.date)
+          : undefined;
+
+        const startTime = s.session_start_time ?? s.start_time ?? "";
+        const endTime = s.session_end_time ?? s.end_time ?? "";
+
+        // 🔁 MAP VENUE NAMES → IDS
+        const building = buildings.find(
+          (b) => b.building_name === s.venue?.building
+        );
+
+        let floors: Floor[] = [];
+        let rooms: Room[] = [];
+
+        if (building) {
+          floors = await getFloors(building.id);
+        }
+
+        const floor = floors.find((f) => f.floor_name === s.venue?.floor);
+
+        if (floor) {
+          rooms = await getRooms(floor.id);
+        }
+
+        const room = rooms.find((r) => r.room_no === s.venue?.room);
+
+        hydrated.push({
+          session_topic: s.session_topic ?? s.topic ?? "",
+          session_speaker_id: speakerId,
+          session_date: sessionDate,
+          session_start_time: startTime,
+          session_end_time: endTime,
+
+          // ⬇️ IMPORTANT: assign AFTER options exist
+          session_building_id: building ? String(building.id) : undefined,
+          session_floor_id: floor ? String(floor.id) : undefined,
+          session_room_id: room ? String(room.id) : undefined,
+
+          floors,
+          rooms,
+        });
+      }
+
+      setSessions(hydrated);
+      setVenuesReady(true);
+    };
+
+    hydrateSessions();
+  }, [initialEvent, buildings]);
+
+  // useEffect(() => {
+  //   if (!initialEvent || buildings.length === 0 || sessions.length === 0)
+  //     return;
+
+  //   const hydrateVenues = async () => {
+  //     const updated = await Promise.all(
+  //       sessions.map(async (s) => {
+  //         let floors = s.floors ?? [];
+  //         let rooms = s.rooms ?? [];
+
+  //         if (s.session_building_id && floors.length === 0) {
+  //           floors = await getFloors(s.session_building_id);
+  //         }
+
+  //         if (s.session_floor_id && rooms.length === 0) {
+  //           rooms = await getRooms(s.session_floor_id);
+  //         }
+
+  //         return { ...s, floors, rooms };
+  //       })
+  //     );
+
+  //     setSessions(updated);
+  //   };
+
+  //   hydrateVenues();
+  // }, [buildings]);
+
+  useEffect(() => {
+    // When opening Create Event (no initialEvent), reset everything
+    if (!open) return;
+
+    if (!initialEvent) {
+      setForm({
+        name: "",
+        description: "",
+        startDate: undefined,
+        endDate: undefined,
+        startTime: "",
+        endTime: "",
+      });
+      setSessions([]);
+      setVenuesReady(true);
+    }
+  }, [open, initialEvent]);
 
   /* ================= HELPERS ================= */
 
@@ -110,7 +245,7 @@ export function CreateEventModal({ open, onOpenChange, onCreated }: Props) {
       {
         session_topic: "",
         session_speaker_id: null,
-        session_date: event.startDate,
+        session_date: form.startDate,
         session_start_time: "",
         session_end_time: "",
         floors: [],
@@ -138,59 +273,44 @@ export function CreateEventModal({ open, onOpenChange, onCreated }: Props) {
   /* ================= SUBMIT ================= */
 
   const handleSubmit = async () => {
-    console.log("RAW SESSIONS STATE:", sessions);
-
     if (
-      !event.name ||
-      !event.startDate ||
-      !event.endDate ||
-      !event.startTime ||
-      !event.endTime
+      !form.name ||
+      !form.startDate ||
+      !form.endDate ||
+      !form.startTime ||
+      !form.endTime
     ) {
       alert("Missing required event fields");
-      return;
-    }
-
-    const validSessions = sessions.filter(
-      (s) =>
-        s.session_date &&
-        s.session_start_time &&
-        s.session_end_time &&
-        s.session_building_id &&
-        s.session_floor_id &&
-        s.session_room_id
-    );
-
-    if (sessions.length > 0 && validSessions.length === 0) {
-      alert(
-        "You added sessions, but none were captured. Please complete all required session fields."
-      );
       return;
     }
 
     setLoading(true);
 
     const payload = {
-      event_name: event.name,
-      event_description: event.description || undefined,
-      start_datetime: buildDateTime(event.startDate, event.startTime),
-      end_datetime: buildDateTime(event.endDate, event.endTime),
-      sessions: validSessions.map((s) => ({
+      event_name: form.name,
+      event_description: form.description || undefined,
+      start_datetime: buildDateTime(form.startDate, form.startTime),
+      end_datetime: buildDateTime(form.endDate, form.endTime),
+      sessions: sessions.map((s) => ({
         session_topic: s.session_topic || null,
         session_speaker_id: s.session_speaker_id ?? null,
-        session_date: s.session_date!.toISOString().split("T")[0],
+        session_date: s.session_date
+          ? s.session_date.toISOString().split("T")[0]
+          : null,
         session_start_time: s.session_start_time,
         session_end_time: s.session_end_time,
-        session_building_id: s.session_building_id!,
-        session_floor_id: s.session_floor_id!,
-        session_room_id: s.session_room_id!,
+        session_building_id: Number(s.session_building_id),
+        session_floor_id: Number(s.session_floor_id),
+        session_room_id: Number(s.session_room_id),
       })),
     };
 
-    console.log("CREATE EVENT PAYLOAD:", payload);
-
     try {
-      await createEvent(payload);
+      if (isEditMode) {
+        await updateEvent(initialEvent.id, payload); // ✅ fixed
+      } else {
+        await createEvent(payload);
+      }
       onCreated();
       onOpenChange(false);
     } catch (err) {
@@ -202,27 +322,28 @@ export function CreateEventModal({ open, onOpenChange, onCreated }: Props) {
   };
 
   /* ================= UI ================= */
+  // UI stays the same, bindings now correctly use `form.*`
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Event</DialogTitle>
+          <DialogTitle>
+            {isEditMode ? "Edit Event" : "Create New Event"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <Input
             placeholder="Event name"
-            value={event.name}
-            onChange={(e) => setEvent({ ...event, name: e.target.value })}
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
 
           <Textarea
             placeholder="Event description"
-            value={event.description}
-            onChange={(e) =>
-              setEvent({ ...event, description: e.target.value })
-            }
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
 
           <div className="grid grid-cols-2 gap-4">
@@ -230,16 +351,16 @@ export function CreateEventModal({ open, onOpenChange, onCreated }: Props) {
               <PopoverTrigger asChild>
                 <Button variant="outline" className="justify-start">
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {event.startDate
-                    ? format(event.startDate, "PPP")
+                  {form.startDate
+                    ? format(form.startDate, "PPP")
                     : "Start Date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent>
                 <Calendar
                   mode="single"
-                  selected={event.startDate}
-                  onSelect={(d) => setEvent({ ...event, startDate: d })}
+                  selected={form.startDate}
+                  onSelect={(d) => setForm({ ...form, startDate: d })}
                 />
               </PopoverContent>
             </Popover>
@@ -248,16 +369,14 @@ export function CreateEventModal({ open, onOpenChange, onCreated }: Props) {
               <PopoverTrigger asChild>
                 <Button variant="outline" className="justify-start">
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {event.endDate
-                    ? format(event.endDate, "PPP")
-                    : "End Date"}
+                  {form.endDate ? format(form.endDate, "PPP") : "End Date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent>
                 <Calendar
                   mode="single"
-                  selected={event.endDate}
-                  onSelect={(d) => setEvent({ ...event, endDate: d })}
+                  selected={form.endDate}
+                  onSelect={(d) => setForm({ ...form, endDate: d })}
                 />
               </PopoverContent>
             </Popover>
@@ -266,17 +385,13 @@ export function CreateEventModal({ open, onOpenChange, onCreated }: Props) {
           <div className="grid grid-cols-2 gap-4">
             <Input
               type="time"
-              value={event.startTime}
-              onChange={(e) =>
-                setEvent({ ...event, startTime: e.target.value })
-              }
+              value={form.startTime}
+              onChange={(e) => setForm({ ...form, startTime: e.target.value })}
             />
             <Input
               type="time"
-              value={event.endTime}
-              onChange={(e) =>
-                setEvent({ ...event, endTime: e.target.value })
-              }
+              value={form.endTime}
+              onChange={(e) => setForm({ ...form, endTime: e.target.value })}
             />
           </div>
         </div>
@@ -290,176 +405,173 @@ export function CreateEventModal({ open, onOpenChange, onCreated }: Props) {
             </Button>
           </div>
 
-          {sessions.map((s, i) => (
-            <div key={i} className="border rounded-lg p-4 space-y-3">
-              <div className="flex justify-between">
-                <p className="font-medium">Session {i + 1}</p>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => removeSession(i)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-
-              <Input
-                placeholder="Session topic"
-                value={s.session_topic}
-                onChange={(e) =>
-                  updateSession(i, "session_topic", e.target.value)
-                }
-              />
-
-              {/* Speaker */}
-              <Select
-                value={
-                  s.session_speaker_id === null
-                    ? "tba"
-                    : s.session_speaker_id
-                    ? String(s.session_speaker_id)
-                    : undefined
-                }
-                onValueChange={(v) =>
-                  updateSession(
-                    i,
-                    "session_speaker_id",
-                    v === "tba" ? null : Number(v)
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select speaker (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tba">TBA</SelectItem>
-                  {speakers.map((sp) => (
-                    <SelectItem key={sp.id} value={String(sp.id)}>
-                      {sp.firstname} {sp.lastname}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Building */}
-              <Select
-                value={
-                  s.session_building_id
-                    ? String(s.session_building_id)
-                    : undefined
-                }
-                onValueChange={(v) => {
-                  const buildingId = Number(v);
-                  updateSession(i, "session_building_id", buildingId);
-                  updateSession(i, "session_floor_id", undefined);
-                  updateSession(i, "session_room_id", undefined);
-                  getFloors(buildingId).then((floors) =>
-                    updateSession(i, "floors", floors)
-                  );
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select building" />
-                </SelectTrigger>
-                <SelectContent>
-                  {buildings.map((b) => (
-                    <SelectItem key={b.id} value={String(b.id)}>
-                      {b.building_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Floor */}
-              <Select
-                value={
-                  s.session_floor_id
-                    ? String(s.session_floor_id)
-                    : undefined
-                }
-                onValueChange={(v) => {
-                  const floorId = Number(v);
-                  updateSession(i, "session_floor_id", floorId);
-                  updateSession(i, "session_room_id", undefined);
-                  getRooms(floorId).then((rooms) =>
-                    updateSession(i, "rooms", rooms)
-                  );
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select floor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {s.floors?.map((f) => (
-                    <SelectItem key={f.id} value={String(f.id)}>
-                      {f.floor_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Room */}
-              <Select
-                value={
-                  s.session_room_id
-                    ? String(s.session_room_id)
-                    : undefined
-                }
-                onValueChange={(v) =>
-                  updateSession(i, "session_room_id", Number(v))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select room" />
-                </SelectTrigger>
-                <SelectContent>
-                  {s.rooms?.map((r) => (
-                    <SelectItem key={r.id} value={String(r.id)}>
-                      {r.room_no}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Session Date */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="justify-start">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {s.session_date
-                      ? format(s.session_date, "PPP")
-                      : "Session Date"}
+          {venuesReady &&
+            sessions.map((s, i) => (
+              <div key={i} className="border rounded-lg p-4 space-y-3">
+                <div className="flex justify-between">
+                  <p className="font-medium">Session {i + 1}</p>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => removeSession(i)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent>
-                  <Calendar
-                    mode="single"
-                    selected={s.session_date}
-                    onSelect={(d) =>
-                      updateSession(i, "session_date", d)
+                </div>
+
+                <Input
+                  placeholder="Session topic"
+                  value={s.session_topic}
+                  onChange={(e) =>
+                    updateSession(i, "session_topic", e.target.value)
+                  }
+                />
+
+                {/* Speaker */}
+                <Select
+                  value={
+                    s.session_speaker_id === null
+                      ? "tba"
+                      : s.session_speaker_id
+                      ? String(s.session_speaker_id)
+                      : undefined
+                  }
+                  onValueChange={(v) =>
+                    updateSession(
+                      i,
+                      "session_speaker_id",
+                      v === "tba" ? null : Number(v)
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select speaker (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tba">TBA</SelectItem>
+                    {speakers.map((sp) => (
+                      <SelectItem key={sp.id} value={String(sp.id)}>
+                        {sp.firstname} {sp.lastname}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Building */}
+                <Select
+                  // value={
+                  //   s.session_building_id
+                  //     ? String(s.session_building_id)
+                  //     : undefined
+                  // }
+                  // onValueChange={(v) => {
+                  //   const buildingId = Number(v);
+                  //   updateSession(i, "session_building_id", v);
+                  //   updateSession(i, "session_floor_id", undefined);
+                  //   updateSession(i, "session_room_id", undefined);
+                  //   getFloors(buildingId).then((floors) =>
+                  //     updateSession(i, "floors", floors)
+                  //   );
+                  // }}
+                  value={s.session_building_id}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select building" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {buildings.map((b) => {
+                      console.log("🏷️ OPTION VALUE:", String(b.id));
+                      return (
+                        <SelectItem key={b.id} value={String(b.id)}>
+                          {b.building_name}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+
+                {/* Floor */}
+                <Select
+                  value={
+                    s.session_floor_id ? String(s.session_floor_id) : undefined
+                  }
+                  onValueChange={(v) => {
+                    const floorId = Number(v);
+                    updateSession(i, "session_floor_id", v);
+                    updateSession(i, "session_room_id", undefined);
+                    getRooms(floorId).then((rooms) =>
+                      updateSession(i, "rooms", rooms)
+                    );
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select floor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {s.floors?.map((f) => (
+                      <SelectItem key={f.id} value={String(f.id)}>
+                        {f.floor_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Room */}
+                <Select
+                  value={
+                    s.session_room_id ? String(s.session_room_id) : undefined
+                  }
+                  onValueChange={(v) => updateSession(i, "session_room_id", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select room" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {s.rooms?.map((r) => (
+                      <SelectItem key={r.id} value={String(r.id)}>
+                        {r.room_no}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Session Date */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="justify-start">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {s.session_date
+                        ? format(s.session_date, "PPP")
+                        : "Session Date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent>
+                    <Calendar
+                      mode="single"
+                      selected={s.session_date}
+                      onSelect={(d) => updateSession(i, "session_date", d)}
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    type="time"
+                    value={s.session_start_time}
+                    onChange={(e) =>
+                      updateSession(i, "session_start_time", e.target.value)
                     }
                   />
-                </PopoverContent>
-              </Popover>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  type="time"
-                  value={s.session_start_time}
-                  onChange={(e) =>
-                    updateSession(i, "session_start_time", e.target.value)
-                  }
-                />
-                <Input
-                  type="time"
-                  value={s.session_end_time}
-                  onChange={(e) =>
-                    updateSession(i, "session_end_time", e.target.value)
-                  }
-                />
+                  <Input
+                    type="time"
+                    value={s.session_end_time}
+                    onChange={(e) =>
+                      updateSession(i, "session_end_time", e.target.value)
+                    }
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
 
         <div className="flex justify-end gap-2 mt-6">
@@ -467,7 +579,13 @@ export function CreateEventModal({ open, onOpenChange, onCreated }: Props) {
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? "Creating..." : "Create Event"}
+            {loading
+              ? isEditMode
+                ? "Saving..."
+                : "Creating..."
+              : isEditMode
+              ? "Save Changes"
+              : "Create Event"}
           </Button>
         </div>
       </DialogContent>

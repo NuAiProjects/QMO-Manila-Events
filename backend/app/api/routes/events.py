@@ -1,3 +1,4 @@
+#backend/app/api/routes/events.py
 from fastapi import APIRouter, Depends, HTTPException
 from app.api.deps import get_current_user
 from app.api.schemas.events import EventCreate
@@ -63,6 +64,74 @@ def create_event(
                 status_code=400,
                 detail="Failed to create event sessions"
             )
+
+    return {"id": event_id}
+
+@router.put("/{event_id}")
+def update_event(
+    event_id: int,
+    payload: EventCreate,
+    user=Depends(get_current_user),
+):
+    # 1️⃣ Ensure event exists and is not archived
+    event_res = (
+        supabase
+        .table("nu_events")
+        .select("id, status")
+        .eq("id", event_id)
+        .single()
+        .execute()
+    )
+
+    if not event_res.data:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    if event_res.data["status"] == "archived":
+        raise HTTPException(
+            status_code=400,
+            detail="Archived events cannot be edited"
+        )
+
+    # 2️⃣ Update event fields
+    update_res = (
+        supabase
+        .table("nu_events")
+        .update({
+            "event_name": payload.event_name,
+            "event_description": payload.event_description,
+            "start_datetime": payload.start_datetime.isoformat(),
+            "end_datetime": payload.end_datetime.isoformat(),
+        })
+        .eq("id", event_id)
+        .execute()
+    )
+
+    if not update_res.data:
+        raise HTTPException(status_code=400, detail="Failed to update event")
+
+    # 3️⃣ Delete old sessions (simple + safe)
+    supabase.table("nu_event_sessions").delete().eq(
+        "session_event_id", event_id
+    ).execute()
+
+    # 4️⃣ Re-create sessions (same logic as create)
+    if payload.sessions:
+        session_rows = []
+
+        for s in payload.sessions:
+            session_rows.append({
+                "session_event_id": event_id,
+                "session_topic": s.session_topic,
+                "session_speaker_id": s.session_speaker_id,
+                "session_date": s.session_date.isoformat(),
+                "session_start_time": s.session_start_time.isoformat(),
+                "session_end_time": s.session_end_time.isoformat(),
+                "session_building_id": s.session_building_id,
+                "session_floor_id": s.session_floor_id,
+                "session_room_id": s.session_room_id,
+            })
+
+        supabase.table("nu_event_sessions").insert(session_rows).execute()
 
     return {"id": event_id}
 

@@ -1,3 +1,4 @@
+// frontend/src/components/layout/AdminSidebar.tsx
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -194,6 +195,7 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
           <>
             <Button
               variant="ghost"
+              onClick={() => navigate("/notifications")}
               className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
             >
               <Bell className="h-5 w-5 mr-3" />
@@ -202,6 +204,7 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
                 3
               </span>
             </Button>
+
             <Button
               variant="ghost"
               onClick={handleSignOut}

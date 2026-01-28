@@ -76,6 +76,13 @@ export const createEvent = (payload: EventCreatePayload) => {
   });
 };
 
+export const updateEvent = (eventId: number, payload: EventCreatePayload) => {
+  return apiFetch(`/api/v1/events/${eventId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+};
+
 export const publishEvent = (eventId: number) => {
   return apiFetch(`/api/v1/events/${eventId}/publish`, {
     method: "PATCH",

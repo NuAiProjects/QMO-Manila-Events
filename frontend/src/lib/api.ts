@@ -1,3 +1,4 @@
+// frontend/src/lib/api.ts
 import { supabase } from "@/lib/supabase";
 
 const API_BASE_URL =
