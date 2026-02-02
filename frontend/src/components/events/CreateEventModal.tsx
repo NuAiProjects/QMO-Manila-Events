@@ -459,21 +459,21 @@ export function CreateEventModal({
 
                 {/* Building */}
                 <Select
-                  // value={
-                  //   s.session_building_id
-                  //     ? String(s.session_building_id)
-                  //     : undefined
-                  // }
-                  // onValueChange={(v) => {
-                  //   const buildingId = Number(v);
-                  //   updateSession(i, "session_building_id", v);
-                  //   updateSession(i, "session_floor_id", undefined);
-                  //   updateSession(i, "session_room_id", undefined);
-                  //   getFloors(buildingId).then((floors) =>
-                  //     updateSession(i, "floors", floors)
-                  //   );
-                  // }}
-                  value={s.session_building_id}
+                  value={
+                    s.session_building_id
+                      ? String(s.session_building_id)
+                      : undefined
+                  }
+                  onValueChange={(v) => {
+                    const buildingId = Number(v);
+                    updateSession(i, "session_building_id", v);
+                    updateSession(i, "session_floor_id", undefined);
+                    updateSession(i, "session_room_id", undefined);
+                    getFloors(buildingId).then((floors) =>
+                      updateSession(i, "floors", floors)
+                    );
+                  }}
+                  // value={s.session_building_id}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select building" />
